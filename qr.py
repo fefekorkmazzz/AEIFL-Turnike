@@ -2,20 +2,22 @@ import pandas as pd
 import qrcode
 import os
 
-# 1. Excel dosyasını yükle
 print("Excel dosyası yolunu yapıştırın")
 excel_dosya = input()  # Excel dosyanızın adı
 
+print("QR kodların kaydedileceği dosya yolunu yapıştırın")
+kayit_klasoru = input()
+
 df = pd.read_excel(excel_dosya)
 
-# 2. ID sütununun adını belirleyin (örnek: "ID" sütunu)
+
 id_sutun_adi = "ID"  # Excel'deki sütun adı
 
-# 3. QR kodları kaydetmek için klasör oluştur
-kayit_klasoru = "qr_kodlar"
+
+
 os.makedirs(kayit_klasoru, exist_ok=True)
 
-# 4. Her ID için QR kod oluştur ve kaydet
+
 for ogrenci_id in df[id_sutun_adi]:
     # QR kod üret
     qr = qrcode.QRCode(
