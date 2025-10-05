@@ -73,3 +73,9 @@ body {
     flex-wrap: wrap;
     justify-content: center;
   }
+  .button-delete {
+  background: #dc2626;
+}
+.button-delete:hover {
+  background: #b91c1c;
+}

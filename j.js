@@ -1,0 +1,194 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc,
+  collection, query, where, getDocs,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Firebase ayarları
+const firebaseConfig = {
+  apiKey: "AIzaSyC7-xxih4nQaFX6Bh96yO28WJl7HpeOKW0",
+  authDomain: "yemekhanem-13ff7.firebaseapp.com",
+  projectId: "yemekhanem-13ff7",
+  storageBucket: "yemekhanem-13ff7.appspot.com",
+  messagingSenderId: "53580209245",
+  appId: "1:53580209245:web:ad832d5ccfd04c110e01b4",
+  measurementId: "G-J5LNZSV7WS"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let students = [];
+
+function getMealType() {
+  return (new Date().getHours() < 16) ? "lunch" : "dinner";
+}
+
+function getTodayId(code, mealType) {
+  const t = new Date();
+  const dateStr = t.toISOString().split("T")[0];
+  return `${code}_${mealType}_${dateStr}`;
+}
+
+async function hasAlreadyEaten(code, mealType) {
+  const ref = doc(db, "meals", getTodayId(code, mealType));
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) return null;
+
+  const data = snap.data();
+  if (!data.timestamp) return data;
+
+  const now = new Date();
+  const mealTime = data.timestamp.toDate();
+  const diffMs = now - mealTime;
+  const diffMinutes = diffMs / (1000 * 60);
+
+  return { data, diffMinutes };
+}
+
+async function markAsEaten(code, mealType, studentName) {
+  const ref = doc(db, "meals", getTodayId(code, mealType));
+  await setDoc(ref, {
+    code,
+    name: studentName,
+    mealType,
+    timestamp: serverTimestamp(),
+    date: new Date().toISOString().split("T")[0]
+  });
+  return `Logged at server time.`;
+}
+
+async function processCode(scannedCode) {
+  const code = scannedCode.trim();
+  const student = students.find(s => s.code === code);
+  const mealType = getMealType();
+
+  if (!student) {
+    showMessage("🚫 Geçersiz QR kod. Öğrenci bulunamadı.", "error");
+    return;
+  }
+
+  const result = await hasAlreadyEaten(code, mealType);
+
+  if (!result) {
+    await markAsEaten(code, mealType, student.name);
+    showMessage(`✅ ${student.name} için ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
+    return;
+  }
+
+  const { data, diffMinutes } = result;
+
+  if (diffMinutes <= 60) {
+    const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'belirtilmemiş zaman';
+    showMessage(`⚠️ ${student.name} zaten yemek aldı. (${recordedTime})`, "error");
+    return;
+  }
+
+  await markAsEaten(code, mealType, student.name);
+  showMessage(`✅ ${student.name} için tekrar ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
+}
+
+function showMessage(message, type = "success") {
+  const resultEl = document.getElementById("result");
+  resultEl.textContent = message;
+  resultEl.className = `log ${type}`;
+}
+
+async function confirmDelete() {
+  const first = confirm("⚠️ Veriler siliniyor, doğrulayınız.");
+  if (!first) return;
+
+  const second = confirm("❗ Bu işlem geri alınamaz. Emin misiniz?");
+  if (!second) return;
+
+  const mealType = getMealType();
+  const today = new Date().toISOString().split("T")[0];
+  const q = query(collection(db, "meals"),
+    where("date", "==", today),
+    where("mealType", "==", mealType));
+  const snaps = await getDocs(q);
+
+  if (snaps.empty) {
+    showMessage("📁 Silinecek veri bulunamadı.", "error");
+    return;
+  }
+
+  let deletedCount = 0;
+  for (const docSnap of snaps.docs) {
+    await docSnap.ref.delete();
+    deletedCount++;
+  }
+
+  showMessage(`🗑️ ${deletedCount} kayıt başarıyla silindi.`, "success");
+}
+window.confirmDelete = confirmDelete;
+
+const qrScanner = new Html5Qrcode("reader");
+const config = { fps: 10, qrbox: 250 };
+let lastScanned = "";
+
+function startCamera() {
+  if (students.length === 0) {
+    showMessage("⏳ Öğrenci listesi yükleniyor...", "error");
+    return;
+  }
+  document.getElementById("reader").style.display = "block";
+  qrScanner.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      const code = decodedText.trim();
+      if (code !== lastScanned) {
+        lastScanned = code;
+        processCode(code);
+        setTimeout(() => lastScanned = "", 5000);
+      }
+    },
+    (errorMessage) => {}
+  ).catch((err) => {
+    showMessage("🚫 Kamera başlatılamadı: " + err, "error");
+  });
+}
+
+async function generateReport() {
+  const mealType = getMealType();
+  const today = new Date().toISOString().split("T")[0];
+  const q = query(collection(db, "meals"),
+    where("date", "==", today),
+    where("mealType", "==", mealType));
+  const snaps = await getDocs(q);
+
+  if (snaps.empty) {
+    showMessage("📋 Bugün için yemek alan öğrenci yok.", "error");
+    return;
+  }
+
+  const reportData = [['Öğrenci Adı','Öğrenci ID','Yemek Saati','Öğün']];
+  const unique = new Set();
+
+  snaps.forEach(d => {
+    const r = d.data();
+    const mealTime = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : 'N/A';
+    reportData.push([r.name, r.code, mealTime, mealType === "lunch" ? "Öğle" : "Akşam"]);
+    unique.add(r.code);
+  });
+
+  reportData.push([]);
+  reportData.push(['Toplam Yemek Alan Kişi Sayısı', unique.size, '', '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(reportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Yemekhane");
+  XLSX.writeFile(wb, `Yemekhane_Raporu_${today}.xlsx`);
+
+  showMessage(`📊 Rapor oluşturuldu. Toplam ${unique.size} kişi.`, "success");
+}
+
+fetch("students.json")
+  .then(r => r.json())
+  .then(data => { students = data; })
+  .catch(err => { showMessage("🚫 Öğrenci verisi yüklenemedi: " + err, "error"); });
+
+window.startCamera = startCamera;
+window.generateReport = generateReport;
