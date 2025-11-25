@@ -83,19 +83,34 @@ async function markAsEaten(code, mealType, studentName) {
 }
 
 async function processCode(scannedCode) {
-  const code = scannedCode.trim();
-  const student = students.find(s => s.code === code);
-  const mealType = getMealType();
+  const raw = scannedCode.trim();
+  const parts = raw.split(" ");
 
-  if (!student) {
-    showMessage("🚫 Geçersiz QR kod. Öğrenci bulunamadı.", "error");
+  // Format: SINIFŞUBE OKULNO İSİM SOYİSİM
+  if (parts.length < 3) {
+    showMessage("🚫 QR formatı geçersiz. Beklenen format: '9A 607 İSİM SOYİSİM'", "error");
     return;
   }
 
-  const result = await hasAlreadyEaten(code, mealType);
+  const classSection = parts[0];       // 9A
+  const studentNumber = parts[1];      // 607
+  const fullName = parts.slice(2).join(" "); // "YAVUZ SELİM ÇINGIL"
+
+  const normalizedCode = `${classSection} ${studentNumber} ${fullName}`.trim();
+
+  // JSON içinde birebir eşleşme yapılacak
+  const student = students.find(s => s.code.toUpperCase() === normalizedCode.toUpperCase());
+  const mealType = getMealType();
+
+  if (!student) {
+    showMessage("🚫 Öğrenci bulunamadı. Kod öğrenciler listesinde yok.", "error");
+    return;
+  }
+
+  const result = await hasAlreadyEaten(normalizedCode, mealType);
 
   if (!result) {
-    await markAsEaten(code, mealType, student.name);
+    await markAsEaten(normalizedCode, mealType, student.name);
     showMessage(`✅ ${student.name} için ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
     return;
   }
@@ -103,14 +118,15 @@ async function processCode(scannedCode) {
   const { data, diffMinutes } = result;
 
   if (diffMinutes <= 60) {
-    const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : 'belirtilmemiş zaman';
-    showMessage(`⚠️ ${student.name} zaten yemek aldı. (${recordedTime})`, "error");
+    const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
+    showMessage(`⚠️ ${student.name} zaten yemek aldı (${recordedTime}).`, "error");
     return;
   }
 
-  await markAsEaten(code, mealType, student.name);
+  await markAsEaten(normalizedCode, mealType, student.name);
   showMessage(`✅ ${student.name} için tekrar ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
 }
+
 
 function showMessage(message, type = "success") {
   const resultEl = document.getElementById("result");
