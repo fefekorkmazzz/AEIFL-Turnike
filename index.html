@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <title>Yemekhane QR Kontrol</title>
+<div class="corner-logos">
+    <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
+    <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
+</div>
+<div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -117,7 +122,7 @@ async function processCode(scannedCode) {
 
   const { data, diffMinutes } = result;
 
-  if (diffMinutes <= 60) {
+  if (diffMinutes <= 180) {
     const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
     showMessage(`⚠️ ${student.name} zaten yemek aldı (${recordedTime}).`, "error");
     return;
