@@ -2,12 +2,12 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<title>TURNIQUE</title>
+<title>Yemekhane QR Kontrol</title>
 <div class="corner-logos">
     <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
     <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
 </div>
-<div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ #TURNIQUE</div>
+<div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
 </head>
 <body>
 <div class="container">
-  <h2>📷 QR Kod & Yemekhane Sistemi - TURNIQUE</h2>
+  <h2>📷 QR Kod ile Yemekhane Girişi</h2>
   <div class="buttons-container">
     <button onclick="startCamera()">Kamerayı Aç</button>
     <button class="button-report" onclick="generateReport()">Rapor Al</button>
@@ -52,14 +52,14 @@ function getMealType() {
   return (new Date().getHours() < 16) ? "lunch" : "dinner";
 }
 
-function getTodayId(code, mealType) {
+function getTodayId(key, mealType) {
   const t = new Date();
   const dateStr = t.toISOString().split("T")[0];
-  return `${code}_${mealType}_${dateStr}`;
+  return `${key}_${mealType}_${dateStr}`;
 }
 
-async function hasAlreadyEaten(code, mealType) {
-  const ref = doc(db, "meals", getTodayId(code, mealType));
+async function hasAlreadyEaten(key, mealType) {
+  const ref = doc(db, "meals", getTodayId(key, mealType));
   const snap = await getDoc(ref);
 
   if (!snap.exists()) return null;
@@ -75,10 +75,10 @@ async function hasAlreadyEaten(code, mealType) {
   return { data, diffMinutes };
 }
 
-async function markAsEaten(code, mealType, studentName) {
-  const ref = doc(db, "meals", getTodayId(code, mealType));
+async function markAsEaten(key, studentName, mealType) {
+  const ref = doc(db, "meals", getTodayId(key, mealType));
   await setDoc(ref, {
-    code,
+    key,
     name: studentName,
     mealType,
     timestamp: serverTimestamp(),
@@ -87,24 +87,12 @@ async function markAsEaten(code, mealType, studentName) {
   return `Logged at server time.`;
 }
 
-async function processCode(scannedCode) {
-  const raw = scannedCode.trim();
-  const parts = raw.split(" ");
+// QR kodu işleme fonksiyonu
+async function processCode(scannedKey) {
+  const key = scannedKey.trim();
 
-  // Format: SINIFŞUBE OKULNO İSİM SOYİSİM
-  if (parts.length < 3) {
-    showMessage("🚫 QR formatı geçersiz. Beklenen format: '9A 607 İSİM SOYİSİM'", "error");
-    return;
-  }
+  const student = students.find(s => s.key === key);
 
-  const classSection = parts[0];       // 9A
-  const studentNumber = parts[1];      // 607
-  const fullName = parts.slice(2).join(" "); // "YAVUZ SELİM ÇINGIL"
-
-  const normalizedCode = `${classSection} ${studentNumber} ${fullName}`.trim();
-
-  // JSON içinde birebir eşleşme yapılacak
-  const student = students.find(s => s.code.toUpperCase() === normalizedCode.toUpperCase());
   const mealType = getMealType();
 
   if (!student) {
@@ -112,10 +100,10 @@ async function processCode(scannedCode) {
     return;
   }
 
-  const result = await hasAlreadyEaten(normalizedCode, mealType);
+  const result = await hasAlreadyEaten(key, mealType);
 
   if (!result) {
-    await markAsEaten(normalizedCode, mealType, student.name);
+    await markAsEaten(key, student.name, mealType);
     showMessage(`✅ ${student.name} için ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
     return;
   }
@@ -128,10 +116,9 @@ async function processCode(scannedCode) {
     return;
   }
 
-  await markAsEaten(normalizedCode, mealType, student.name);
+  await markAsEaten(key, student.name, mealType);
   showMessage(`✅ ${student.name} için tekrar ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
 }
-
 
 function showMessage(message, type = "success") {
   const resultEl = document.getElementById("result");
@@ -208,14 +195,14 @@ async function generateReport() {
     return;
   }
 
-  const reportData = [['Öğrenci Adı','Öğrenci ID','Yemek Saati','Öğün']];
+  const reportData = [['Öğrenci Adı','Öğrenci Key','Yemek Saati','Öğün']];
   const unique = new Set();
 
   snaps.forEach(d => {
     const r = d.data();
     const mealTime = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : 'N/A';
-    reportData.push([r.name, r.code, mealTime, mealType === "lunch" ? "Öğle" : "Akşam"]);
-    unique.add(r.code);
+    reportData.push([r.name, r.key, mealTime, mealType === "lunch" ? "Öğle" : "Akşam"]);
+    unique.add(r.key);
   });
 
   reportData.push([]);
@@ -229,10 +216,13 @@ async function generateReport() {
   showMessage(`📊 Rapor oluşturuldu. Toplam ${unique.size} kişi.`, "success");
 }
 
-fetch("students.json")
-  .then(r => r.json())
+fetch('students.json')
+  .then(response => response.json())
   .then(data => { students = data; })
-  .catch(err => { showMessage("🚫 Öğrenci verisi yüklenemedi: " + err, "error"); });
+  .catch(err => {
+    console.error('JSON dosyasını yüklerken bir hata oluştu:', err);
+    showMessage("🚫 Öğrenci verisi yüklenemedi: " + err, "error");
+  });
 
 window.startCamera = startCamera;
 window.generateReport = generateReport;
@@ -240,4 +230,3 @@ window.generateReport = generateReport;
 </script>
 </body>
 </html>
-
