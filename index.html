@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<title>Yemekhane QR Kontrol - v20:57</title>
+<title>Yemekhane QR Kontrol</title>
 <div class="corner-logos">
     <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
     <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
@@ -17,7 +17,7 @@
 </head>
 <body>
 <div class="container">
-  <h2>📷 QR Kod ile Yemekhane Girişi - v20.54</h2>
+  <h2>📷 QR Kod ile Yemekhane Girişi - v1.1.4</h2>
   <div class="buttons-container">
     <button onclick="startCamera()">Kamerayı Aç</button>
     <button class="button-report" onclick="generateReport()">Rapor Al</button>
@@ -80,7 +80,7 @@ async function markAsEaten(key, student, mealType) {
   await setDoc(ref, {
     key,
     name: student.name,
-    gender: student.gender,   // 🔥 gender artık kayıt ediliyor
+    gender: student.gender,
     mealType,
     timestamp: serverTimestamp(),
     date: new Date().toISOString().split("T")[0]
@@ -126,36 +126,6 @@ function showMessage(message, type = "success") {
   resultEl.textContent = message;
   resultEl.className = `log ${type}`;
 }
-
-async function confirmDelete() {
-  const first = confirm("⚠️ Veriler siliniyor, doğrulayınız.");
-  if (!first) return;
-
-  const second = confirm("❗ Bu işlem geri alınamaz. Emin misiniz?");
-  if (!second) return;
-
-  const mealType = getMealType();
-  const today = new Date().toISOString().split("T")[0];
-  const q = query(collection(db, "meals"),
-    where("date", "==", today),
-    where("mealType", "==", mealType));
-  const snaps = await getDocs(q);
-
-  if (snaps.empty) {
-    showMessage("📁 Silinecek veri bulunamadı.", "error");
-    return;
-  }
-
-  let deletedCount = 0;
-  for (const docSnap of snaps.docs) {
-    await docSnap.ref.delete();
-    deletedCount++;
-  }
-
-  showMessage(`🗑️ ${deletedCount} kayıt başarıyla silindi.`, "success");
-}
-window.confirmDelete = confirmDelete;
-
 const qrScanner = new Html5Qrcode("reader");
 const config = { fps: 10, qrbox: 250 };
 let lastScanned = "";
