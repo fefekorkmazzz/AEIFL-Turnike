@@ -75,17 +75,18 @@ async function hasAlreadyEaten(key, mealType) {
   return { data, diffMinutes };
 }
 
-async function markAsEaten(key, studentName, mealType) {
+async function markAsEaten(key, student, mealType) {
   const ref = doc(db, "meals", getTodayId(key, mealType));
   await setDoc(ref, {
     key,
-    name: studentName,
+    name: student.name,
+    gender: student.gender,   // 🔥 gender artık kayıt ediliyor
     mealType,
     timestamp: serverTimestamp(),
     date: new Date().toISOString().split("T")[0]
   });
-  return `Logged at server time.`;
 }
+
 
 // QR kodu işleme fonksiyonu
 async function processCode(scannedKey) {
@@ -185,9 +186,13 @@ function startCamera() {
 async function generateReport() {
   const mealType = getMealType();
   const today = new Date().toISOString().split("T")[0];
-  const q = query(collection(db, "meals"),
+
+  const q = query(
+    collection(db, "meals"),
     where("date", "==", today),
-    where("mealType", "==", mealType));
+    where("mealType", "==", mealType)
+  );
+
   const snaps = await getDocs(q);
 
   if (snaps.empty) {
@@ -195,25 +200,49 @@ async function generateReport() {
     return;
   }
 
-  const reportData = [['Öğrenci Adı','Öğrenci Key','Yemek Saati','Öğün']];
-  const unique = new Set();
+  const allData = [];
+  const males = [];
+  const females = [];
+  const uniqueAll = new Set();
+  const uniqueMales = new Set();
+  const uniqueFemales = new Set();
 
   snaps.forEach(d => {
     const r = d.data();
-    const mealTime = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : 'N/A';
-    reportData.push([r.name, r.key, mealTime, mealType === "lunch" ? "Öğle" : "Akşam"]);
-    unique.add(r.key);
+    const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
+
+    const row = [r.name, r.key, r.gender, time, mealType === "lunch" ? "Öğle" : "Akşam"];
+
+    allData.push(row);
+
+    if (r.gender === "E") {
+      males.push(row);
+      uniqueMales.add(r.key);
+    } else if (r.gender === "K") {
+      females.push(row);
+      uniqueFemales.add(r.key);
+    }
+
+    uniqueAll.add(r.key);
   });
 
-  reportData.push([]);
-  reportData.push(['Toplam Yemek Alan Kişi Sayısı', unique.size, '', '']);
-
-  const ws = XLSX.utils.aoa_to_sheet(reportData);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Yemekhane");
-  XLSX.writeFile(wb, `Yemekhane_Raporu_${today}.xlsx`);
 
-  showMessage(`📊 Rapor oluşturuldu. Toplam ${unique.size} kişi.`, "success");
+  // Tüm öğrenciler
+  const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Öğün'], ...allData]);
+  XLSX.utils.book_append_sheet(wb, wsAll, "Tümü");
+
+  // Erkek
+  const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Öğün'], ...males]);
+  XLSX.utils.book_append_sheet(wb, wsM, "Erkek");
+
+  // Kız
+  const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Öğün'], ...females]);
+  XLSX.utils.book_append_sheet(wb, wsF, "Kız");
+
+  XLSX.writeFile(wb, `Yemekhane_Rapor_${today}.xlsx`);
+
+  showMessage(`📊 Rapor oluşturuldu. Tümü: ${uniqueAll.size}, Erkek: ${uniqueMales.size}, Kız: ${uniqueFemales.size}`, "success");
 }
 
 fetch('students.json')
