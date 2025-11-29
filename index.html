@@ -117,7 +117,7 @@ async function processCode(scannedKey) {
     return;
   }
 
-  await markAsEaten(key, student.name, mealType);
+  await markAsEaten(key, student, mealType);
   showMessage(`✅ ${student.name} için tekrar ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
 }
 
