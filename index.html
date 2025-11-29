@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<title>Yemekhane QR Kontrol - v20:53</title>
+<title>Yemekhane QR Kontrol - v20:57</title>
 <div class="corner-logos">
     <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
     <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
@@ -104,7 +104,7 @@ async function processCode(scannedKey) {
   const result = await hasAlreadyEaten(key, mealType);
 
   if (!result) {
-    await markAsEaten(key, student.name, mealType);
+    await markAsEaten(key, student, mealType);
     showMessage(`✅ ${student.name} için ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
     return;
   }
