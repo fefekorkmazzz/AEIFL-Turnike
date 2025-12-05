@@ -105,7 +105,7 @@ async function processCode(scannedKey) {
 
   if (!result) {
     await markAsEaten(key, student, mealType);
-    showMessage(`✅ ${student.name} için ${mealType === "lunch" ? "öğle" : "akşam"} yemeği verildi.`, "success");
+    showMessage(`✅ ${student.name} yemekhaneye giriş yaptı.`, "success");
     return;
   }
 
@@ -229,3 +229,4 @@ window.generateReport = generateReport;
 </script>
 </body>
 </html>
+
