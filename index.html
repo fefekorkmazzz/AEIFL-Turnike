@@ -3,12 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <title>Yemekhane QR Kontrol</title>
-<div class="corner-logos">
-    <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
-    <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
-</div>
-<div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
-<meta name="viewport" content="width=device-width, initial-scale=0.8">
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -17,8 +11,13 @@
 </style>
 </head>
 <body>
+<div class="corner-logos">
+    <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
+    <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
+</div>
+<div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
 <div class="container">
-  <h2>📷 QR Kod ile Yemekhane Girişi - v1.1.5.1</h2>
+  <h2>📷 QR Kod ile Yemekhane Girişi - v1.1.5.2</h2>
   <div class="buttons-container">
     <button onclick="startCamera()">Kamerayı Aç</button>
     <button class="button-report" onclick="generateReport()">Rapor Al</button>
@@ -230,4 +229,5 @@ window.generateReport = generateReport;
 </script>
 </body>
 </html>
+
 
