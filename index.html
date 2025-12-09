@@ -17,7 +17,7 @@
 </div>
 <div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
 <div class="container">
-  <h2>📷 QR Kod ile Yemekhane Girişi - v1.1.5.2</h2>
+  <h2>📷 QR Kod ile Yemekhane Girişi - v1.1.5.3</h2>
   <div class="buttons-container">
     <button onclick="startCamera()">Kamerayı Aç</button>
     <button class="button-report" onclick="generateReport()">Rapor Al</button>
@@ -181,7 +181,8 @@ async function generateReport() {
     const r = d.data();
     const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
 
-    const row = [r.name, r.key, r.gender, time, mealType === "lunch" ? "Öğle" : "Akşam"];
+    // Sütunlar: Ad, Key, Cinsiyet, Saat, Katıldı
+    const row = [r.name, r.key, r.gender, time, "Evet"];
 
     allData.push(row);
 
@@ -198,22 +199,22 @@ async function generateReport() {
 
   const wb = XLSX.utils.book_new();
 
-  // Tüm öğrenciler
-  const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Öğün'], ...allData]);
+  // Tüm öğrenciler (başlıkta "Katıldı")
+  const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...allData]);
   XLSX.utils.book_append_sheet(wb, wsAll, "Tümü");
 
   // Erkek
-  const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Öğün'], ...males]);
+  const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...males]);
   XLSX.utils.book_append_sheet(wb, wsM, "Erkek");
 
   // Kız
-  const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Öğün'], ...females]);
+  const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...females]);
   XLSX.utils.book_append_sheet(wb, wsF, "Kız");
 
   XLSX.writeFile(wb, `Yemekhane_Rapor_${today}.xlsx`);
 
   showMessage(`📊 Rapor oluşturuldu. Tümü: ${uniqueAll.size}, Erkek: ${uniqueMales.size}, Kız: ${uniqueFemales.size}`, "success");
-}
+    }
 
 fetch('students.json')
   .then(response => response.json())
@@ -229,5 +230,6 @@ window.generateReport = generateReport;
 </script>
 </body>
 </html>
+
 
 
