@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <title>Yemekhane QR Kontrol</title>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -17,7 +19,19 @@
 </div>
 <div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
 <div class="container">
-  <h2>📷 QR Kod ile Yemekhane Girişi - v1.1.5.3</h2>
+  <h2>📷 QR Kod ile Yoklama Sistemi - v1.1.5.3</h2>
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Öğrenci adı ara..." list="names">
+    <datalist id="names"></datalist>
+    <select id="attendanceType">
+      <option value="Yemekhane">Yemekhane</option>
+      <option value="Gezi">Gezi</option>
+      <option value="Konferans">Konferans</option>
+      <option value="Diğer">Diğer</option>
+    </select>
+    <input type="text" id="otherType" placeholder="Kategori adı..." style="display:none;">
+  </div>
+  <div id="searchResult"></div>
   <div class="buttons-container">
     <button onclick="startCamera()">Kamerayı Aç</button>
     <button class="button-report" onclick="generateReport()">Rapor Al</button>
@@ -25,14 +39,8 @@
   <div id="reader"></div>
   <div class="log" id="result"></div>
 </div>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc,
-  collection, query, where, getDocs,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+<script>
+// Firebase ayarları
 // Firebase ayarları
 const firebaseConfig = {
   apiKey: "AIzaSyC7-xxih4nQaFX6Bh96yO28WJl7HpeOKW0",
@@ -43,26 +51,29 @@ const firebaseConfig = {
   appId: "1:53580209245:web:ad832d5ccfd04c110e01b4",
   measurementId: "G-J5LNZSV7WS"
 };
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 let students = [];
 
+// Yemek tipi belirleme
 function getMealType() {
   return (new Date().getHours() < 16) ? "lunch" : "dinner";
 }
 
-function getTodayId(key, mealType) {
+// Tarih + key ile benzersiz ID oluşturma
+function getTodayId(key, type) {
   const t = new Date();
   const dateStr = t.toISOString().split("T")[0];
-  return `${key}_${mealType}_${dateStr}`;
+  return `${key}_${type}_${dateStr}`;
 }
 
-async function hasAlreadyEaten(key, mealType) {
-  const ref = doc(db, "meals", getTodayId(key, mealType));
-  const snap = await getDoc(ref);
+// Daha önce yemek almış mı?
+async function hasAlreadyEaten(key, type) {
+  const ref = db.collection("attendances").doc(getTodayId(key, type));
+  const snap = await ref.get();
 
-  if (!snap.exists()) return null;
+  if (!snap.exists) return null;
 
   const data = snap.data();
   if (!data.timestamp) return data;
@@ -75,161 +86,255 @@ async function hasAlreadyEaten(key, mealType) {
   return { data, diffMinutes };
 }
 
-async function markAsEaten(key, student, mealType) {
-  const ref = doc(db, "meals", getTodayId(key, mealType));
-  await setDoc(ref, {
+// Yemek aldı olarak işaretle
+async function markAsEaten(key, student, type) {
+  const ref = db.collection("attendances").doc(getTodayId(key, type));
+  await ref.set({
     key,
     name: student.name,
     gender: student.gender,
-    mealType,
-    timestamp: serverTimestamp(),
+    type,
+    timestamp: firebase.firestore.Timestamp.now(),
     date: new Date().toISOString().split("T")[0]
   });
 }
 
+// Ses
+function playSound(type) {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
 
-// QR kodu işleme fonksiyonu
+  if (type === 'success') {
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+  } else {
+    oscillator.frequency.value = 400;
+    oscillator.type = 'sawtooth';
+  }
+
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.2);
+}
+
+// 🔥 QR kod işleme fonksiyonu (KAYIPTI — EKLEDİM)
 async function processCode(scannedKey) {
   const key = scannedKey.trim();
-
   const student = students.find(s => s.key === key);
-
-  const mealType = getMealType();
+  let type = document.getElementById('attendanceType').value;
+  if (type === 'Diğer') {
+    const other = document.getElementById('otherType').value.trim();
+    if (other) type = other;
+  }
 
   if (!student) {
     showMessage("🚫 Öğrenci bulunamadı. Kod öğrenciler listesinde yok.", "error");
+    playSound('error');
     return;
   }
 
-  const result = await hasAlreadyEaten(key, mealType);
+  const result = await hasAlreadyEaten(key, type);
 
+  // İlk kez geliyorsa
   if (!result) {
-    await markAsEaten(key, student, mealType);
-    showMessage(`✅ ${student.name} yemekhaneye giriş yaptı.`, "success");
+    await markAsEaten(key, student, type);
+    showMessage(`✅ ${student.name} ${type} yoklamasına katıldı.`, "success");
+    playSound('success');
     return;
   }
 
+  // Daha önce gelmiş
   const { data, diffMinutes } = result;
 
   if (diffMinutes <= 180) {
     const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
-    showMessage(`⚠️ ${student.name} zaten yemek aldı (${recordedTime}).`, "error");
+    showMessage(`⚠️ ${student.name} zaten katıldı (${recordedTime}).`, "error");
+    playSound('error');
     return;
   }
 
-  await markAsEaten(key, student, mealType);
+  // 3 saatten fazla geçmişse tekrar alabilir
+  await markAsEaten(key, student, type);
   showMessage(`✅ ${student.name} için QR Kod tarandı`, "success");
+  playSound('success');
 }
 
+// Ekrana mesaj yazdırma
 function showMessage(message, type = "success") {
   const resultEl = document.getElementById("result");
   resultEl.textContent = message;
   resultEl.className = `log ${type}`;
 }
+
+// QR tarayıcı
 const qrScanner = new Html5Qrcode("reader");
 const config = { fps: 10, qrbox: 250 };
 let lastScanned = "";
 
+// Kamera başlatma
 function startCamera() {
   if (students.length === 0) {
     showMessage("⏳ Öğrenci listesi yükleniyor...", "error");
     return;
   }
+
   document.getElementById("reader").style.display = "block";
+
   qrScanner.start(
     { facingMode: "environment" },
     config,
     (decodedText) => {
       const code = decodedText.trim();
+
       if (code !== lastScanned) {
         lastScanned = code;
         processCode(code);
-        setTimeout(() => lastScanned = "", 5000);
+        setTimeout(() => (lastScanned = ""), 3000);
       }
     },
-    (errorMessage) => {}
-  ).catch((err) => {
+    () => { }
+  ).catch(err => {
     showMessage("🚫 Kamera başlatılamadı: " + err, "error");
   });
 }
 
+// Rapor oluşturma
 async function generateReport() {
-  const mealType = getMealType();
   const today = new Date().toISOString().split("T")[0];
 
-  const q = query(
-    collection(db, "meals"),
-    where("date", "==", today),
-    where("mealType", "==", mealType)
-  );
+  const q = db.collection("attendances").where("date", "==", today);
 
-  const snaps = await getDocs(q);
+  const snaps = await q.get();
 
   if (snaps.empty) {
-    showMessage("📋 Bugün için yemek alan öğrenci yok.", "error");
+    showMessage("📋 Bugün için katılım yok.", "error");
     return;
   }
 
-  const allData = [];
-  const males = [];
-  const females = [];
-  const uniqueAll = new Set();
-  const uniqueMales = new Set();
-  const uniqueFemales = new Set();
+  const typeGroups = {};
 
   snaps.forEach(d => {
     const r = d.data();
-    const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
-
-    // Sütunlar: Ad, Key, Cinsiyet, Saat, Katıldı
-    const row = [r.name, r.key, r.gender, time, "Evet"];
-
-    allData.push(row);
-
-    if (r.gender === "E") {
-      males.push(row);
-      uniqueMales.add(r.key);
-    } else if (r.gender === "K") {
-      females.push(row);
-      uniqueFemales.add(r.key);
+    const type = r.type || "Yemekhane";
+    if (!typeGroups[type]) {
+      typeGroups[type] = { all: [], males: [], females: [], uniqueAll: new Set(), uniqueMales: new Set(), uniqueFemales: new Set() };
     }
-
-    uniqueAll.add(r.key);
+    const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
+    const row = [r.name, r.key, r.gender, time, "Evet"];
+    typeGroups[type].all.push(row);
+    if (r.gender === "E") {
+      typeGroups[type].males.push(row);
+      typeGroups[type].uniqueMales.add(r.key);
+    } else if (r.gender === "K") {
+      typeGroups[type].females.push(row);
+      typeGroups[type].uniqueFemales.add(r.key);
+    }
+    typeGroups[type].uniqueAll.add(r.key);
   });
 
   const wb = XLSX.utils.book_new();
 
-  // Tüm öğrenciler (başlıkta "Katıldı")
-  const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...allData]);
-  XLSX.utils.book_append_sheet(wb, wsAll, "Tümü");
+  Object.keys(typeGroups).forEach(type => {
+    const group = typeGroups[type];
+    const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.all]);
+    XLSX.utils.book_append_sheet(wb, wsAll, `${type} - Tümü`);
 
-  // Erkek
-  const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...males]);
-  XLSX.utils.book_append_sheet(wb, wsM, "Erkek");
+    const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.males]);
+    XLSX.utils.book_append_sheet(wb, wsM, `${type} - Erkek`);
 
-  // Kız
-  const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...females]);
-  XLSX.utils.book_append_sheet(wb, wsF, "Kız");
+    const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.females]);
+    XLSX.utils.book_append_sheet(wb, wsF, `${type} - Kız`);
+  });
 
-  XLSX.writeFile(wb, `Yemekhane_Rapor_${today}.xlsx`);
+  XLSX.writeFile(wb, `Katilim_Raporu_${today}.xlsx`);
 
-  showMessage(`📊 Rapor oluşturuldu. Tümü: ${uniqueAll.size}, Erkek: ${uniqueMales.size}, Kız: ${uniqueFemales.size}`, "success");
-    }
+  const summary = Object.keys(typeGroups).map(type => `${type}: ${typeGroups[type].uniqueAll.size}`).join(', ');
+  showMessage(`📊 Rapor oluşturuldu. ${summary}`, "success");
+}
 
+// Öğrencileri JSON'dan yükle
 fetch('students.json')
   .then(response => response.json())
-  .then(data => { students = data; })
+  .then(data => {
+    students = data;
+    console.log("Students loaded:", students.length);
+    // Datalist doldur
+    const datalist = document.getElementById('names');
+    const uniqueNames = new Set();
+    students.forEach(s => uniqueNames.add(s.name));
+    uniqueNames.forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      datalist.appendChild(option);
+    });
+  })
   .catch(err => {
-    console.error('JSON dosyasını yüklerken bir hata oluştu:', err);
+    console.error('JSON yüklenirken hata oluştu:', err);
     showMessage("🚫 Öğrenci verisi yüklenemedi: " + err, "error");
   });
 
+// Yoklama türü seçimi
+document.getElementById('attendanceType').addEventListener('change', function() {
+  const otherInput = document.getElementById('otherType');
+  if (this.value === 'Diğer') {
+    otherInput.style.display = 'block';
+  } else {
+    otherInput.style.display = 'none';
+    otherInput.value = '';
+  }
+});
+
+// Arama input'u büyük harf yap ve ara
+document.getElementById('searchInput').addEventListener('input', async function() {
+  this.value = this.value.toLocaleUpperCase('tr');
+  const searchTerm = this.value.trim();
+  const resultDiv = document.getElementById('searchResult');
+  if (searchTerm === '') {
+    resultDiv.textContent = '';
+    return;
+  }
+  const mealType = getMealType();
+  const today = new Date().toISOString().split("T")[0];
+  let type = document.getElementById('attendanceType').value;
+  if (type === 'Diğer') {
+    const other = document.getElementById('otherType').value.trim();
+    if (other) type = other;
+  }
+  try {
+    const q = db.collection("attendances").where("name", "==", searchTerm).where("date", "==", today).where("type", "==", type);
+    const snaps = await q.get();
+    if (snaps.empty) {
+      resultDiv.textContent = "Öğrenciye ait kayıt bulunamadı";
+      resultDiv.className = "search-result error";
+    } else {
+      let latestTime = null;
+      snaps.forEach(doc => {
+        const data = doc.data();
+        const time = data.timestamp.toDate();
+        if (!latestTime || time > latestTime) {
+          latestTime = time;
+        }
+      });
+      resultDiv.textContent = `${searchTerm} ${latestTime.toLocaleTimeString()} tarihinde sisteme kaydedildi.`;
+      resultDiv.className = "search-result success";
+    }
+  } catch (err) {
+    resultDiv.textContent = "Arama hatası: " + err.message;
+    resultDiv.className = "search-result error";
+  }
+});
+
+// Fonksiyon erişimleri
 window.startCamera = startCamera;
 window.generateReport = generateReport;
+
 
 </script>
 </body>
 </html>
-
 
 
