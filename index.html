@@ -24,7 +24,10 @@
     <input type="text" id="searchInput" placeholder="Öğrenci adı ara..." list="names">
     <datalist id="names"></datalist>
     <select id="attendanceType">
-      <option value="Yemekhane">Yemekhane</option>
+      <option value="Kahvaltı">Kahvaltı</option>
+      <option value="Öğle Yemeği">Öğle Yemeği</option>
+      <option value="Akşam Yemeği">Akşam Yemeği</option>
+      <option value="Etüt">Etüt</option>
       <option value="Gezi">Gezi</option>
       <option value="Konferans">Konferans</option>
       <option value="Diğer">Diğer</option>
@@ -297,29 +300,21 @@ document.getElementById('searchInput').addEventListener('input', async function(
     resultDiv.textContent = '';
     return;
   }
-  const mealType = getMealType();
   const today = new Date().toISOString().split("T")[0];
-  let type = document.getElementById('attendanceType').value;
-  if (type === 'Diğer') {
-    const other = document.getElementById('otherType').value.trim();
-    if (other) type = other;
-  }
   try {
-    const q = db.collection("attendances").where("name", "==", searchTerm).where("date", "==", today).where("type", "==", type);
+    const q = db.collection("attendances").where("name", "==", searchTerm).where("date", "==", today);
     const snaps = await q.get();
     if (snaps.empty) {
       resultDiv.textContent = "Öğrenciye ait kayıt bulunamadı";
       resultDiv.className = "search-result error";
     } else {
-      let latestTime = null;
+      const records = [];
       snaps.forEach(doc => {
         const data = doc.data();
-        const time = data.timestamp.toDate();
-        if (!latestTime || time > latestTime) {
-          latestTime = time;
-        }
+        const time = data.timestamp.toDate().toLocaleTimeString();
+        records.push(`${searchTerm} ${time} tarihinde ${data.type} yoklamasında`);
       });
-      resultDiv.textContent = `${searchTerm} ${latestTime.toLocaleTimeString()} tarihinde sisteme kaydedildi.`;
+      resultDiv.innerHTML = records.join('<br>');
       resultDiv.className = "search-result success";
     }
   } catch (err) {
