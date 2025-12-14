@@ -1,190 +1,409 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8" />
-<title>Yemekhane QR Kontrol</title>
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<style>
-</style>
-</head>
-<body>
-<div class="corner-logos">
-    <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
-    <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
-</div>
-<div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
-<div class="container">
-  <h2>📷 QR Kod ile Yoklama Sistemi - v1.1.5.3</h2>
-  <div class="search-container">
-    <input type="text" id="searchInput" placeholder="Öğrenci adı ara..." list="names">
-    <datalist id="names"></datalist>
-    <select id="attendanceType">
-      <option value="Kahvaltı">Kahvaltı</option>
-      <option value="Öğle Yemeği">Öğle Yemeği</option>
-      <option value="Akşam Yemeği">Akşam Yemeği</option>
-      <option value="Etüt">Etüt</option>
-      <option value="Gezi">Gezi</option>
-      <option value="Konferans">Konferans</option>
-      <option value="Diğer">Diğer</option>
-    </select>
-    <input type="text" id="otherType" placeholder="Kategori adı..." style="display:none;">
+  <!DOCTYPE html>
+  <html lang="tr">
+  <head>
+  <meta charset="UTF-8" />
+  <title>Yemekhane QR Kontrol</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+  </style>
+  </head>
+  <body>
+    <div class="corner-logos">
+      <img src="erman_ilicak_logo.png" class="logo-left" alt="Sol Logo">
+      <img src="fatih.jpg" class="logo-right" alt="Sağ Logo">
   </div>
-  <div id="searchResult"></div>
-  <div class="buttons-container">
-    <button onclick="startCamera()">Kamerayı Aç</button>
-    <button class="button-report" onclick="generateReport()">Rapor Al</button>
-  </div>
-  <div id="reader"></div>
-  <div class="log" id="result"></div>
+    <div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
+    <div class="container">
+    <h2>📷 QR Kod ile Yoklama Sistemi - v1.1.5.4</h2>
+    <div id="preAuth" class="search-container">
+  <select id="attendanceTypeInit">
+    <option value="">Yoklama Türü Seçiniz</option>
+    <option value="Kahvaltı">Kahvaltı</option>
+    <option value="Öğle Yemeği">Öğle Yemeği</option>
+    <option value="Akşam Yemeği">Akşam Yemeği</option>
+    <option value="Etüt">Etüt</option>
+    <option value="Gezi">Gezi</option>
+    <option value="Konferans">Konferans</option>
+    <option value="Diğer">Diğer</option>
+  </select>
+
+  <button id="continueBtn" disabled>Devam</button>
 </div>
-<script>
-// Firebase ayarları
-// Firebase ayarları
-const firebaseConfig = {
-  apiKey: "AIzaSyC7-xxih4nQaFX6Bh96yO28WJl7HpeOKW0",
-  authDomain: "yemekhanem-13ff7.firebaseapp.com",
-  projectId: "yemekhanem-13ff7",
-  storageBucket: "yemekhanem-13ff7.appspot.com",
-  messagingSenderId: "53580209245",
-  appId: "1:53580209245:web:ad832d5ccfd04c110e01b4",
-  measurementId: "G-J5LNZSV7WS"
-};
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
 
-let students = [];
+    <div class="search-container" id="searchContainer" style="display:none;">
+      <input type="text" id="searchInput" placeholder="Öğrenci adı ara..." list="names">
+      <datalist id="names"></datalist>
+      <select id="attendanceType">
+        <option value="Kahvaltı">Kahvaltı</option>
+        <option value="Öğle Yemeği">Öğle Yemeği</option>
+        <option value="Akşam Yemeği">Akşam Yemeği</option>
+        <option value="Etüt">Etüt</option>
+        <option value="Gezi">Gezi</option>
+        <option value="Konferans">Konferans</option>
+        <option value="Diğer">Diğer</option>
+      </select>
+      <input type="text" id="otherType" placeholder="Kategori adı..." style="display:none;">
+    </div>
+    <div id="searchResult" style="display:none;"></div>
+    <div class="buttons-container" id="buttonsContainer" style="display:none;">
+      <button onclick="startCamera()">Öğrenci Kamerası</button>
+      <button class="button-report" onclick="generateReport()">Rapor Al</button>
+    </div>
+    <div id="reader"></div>
+    <div class="log" id="result"></div>
+  </div>
+  <script>
+  // Firebase ayarları
+  // Firebase ayarları
+  const firebaseConfig = {
+    apiKey: "AIzaSyC7-xxih4nQaFX6Bh96yO28WJl7HpeOKW0",
+    authDomain: "yemekhanem-13ff7.firebaseapp.com",
+    projectId: "yemekhanem-13ff7",
+    storageBucket: "yemekhanem-13ff7.appspot.com",
+    messagingSenderId: "53580209245",
+    appId: "1:53580209245:web:ad832d5ccfd04c110e01b4",
+    measurementId: "G-J5LNZSV7WS"
+  };
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-// Yemek tipi belirleme
-function getMealType() {
-  return (new Date().getHours() < 16) ? "lunch" : "dinner";
-}
+  let students = [];
+let teachers = [];
+let isTeacherVerified = false;
 
-// Tarih + key ile benzersiz ID oluşturma
-function getTodayId(key, type) {
-  const t = new Date();
-  const dateStr = t.toISOString().split("T")[0];
-  return `${key}_${type}_${dateStr}`;
-}
-
-// Daha önce yemek almış mı?
-async function hasAlreadyEaten(key, type) {
-  const ref = db.collection("attendances").doc(getTodayId(key, type));
-  const snap = await ref.get();
-
-  if (!snap.exists) return null;
-
-  const data = snap.data();
-  if (!data.timestamp) return data;
-
-  const now = new Date();
-  const mealTime = data.timestamp.toDate();
-  const diffMs = now - mealTime;
-  const diffMinutes = diffMs / (1000 * 60);
-
-  return { data, diffMinutes };
-}
-
-// Yemek aldı olarak işaretle
-async function markAsEaten(key, student, type) {
-  const ref = db.collection("attendances").doc(getTodayId(key, type));
-  await ref.set({
-    key,
-    name: student.name,
-    gender: student.gender,
-    type,
-    timestamp: firebase.firestore.Timestamp.now(),
-    date: new Date().toISOString().split("T")[0]
-  });
-}
-
-// Ses
-function playSound(type) {
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  if (type === 'success') {
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-  } else {
-    oscillator.frequency.value = 400;
-    oscillator.type = 'sawtooth';
+  // Yemek tipi belirleme
+  function getMealType() {
+    return (new Date().getHours() < 16) ? "lunch" : "dinner";
   }
 
-  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-  oscillator.start(audioContext.currentTime);
-  oscillator.stop(audioContext.currentTime + 0.2);
-}
-
-// 🔥 QR kod işleme fonksiyonu (KAYIPTI — EKLEDİM)
-async function processCode(scannedKey) {
-  const key = scannedKey.trim();
-  const student = students.find(s => s.key === key);
-  let type = document.getElementById('attendanceType').value;
-  if (type === 'Diğer') {
-    const other = document.getElementById('otherType').value.trim();
-    if (other) type = other;
+  // Tarih + key ile benzersiz ID oluşturma
+  function getTodayId(key, type) {
+    const t = new Date();
+    const dateStr = t.toISOString().split("T")[0];
+    return `${key}_${type}_${dateStr}`;
   }
 
-  if (!student) {
-    showMessage("🚫 Öğrenci bulunamadı. Kod öğrenciler listesinde yok.", "error");
-    playSound('error');
-    return;
+  // Daha önce yemek almış mı?
+  async function hasAlreadyEaten(key, type) {
+    const ref = db.collection("attendances").doc(getTodayId(key, type));
+    const snap = await ref.get();
+
+    if (!snap.exists) return null;
+
+    const data = snap.data();
+    if (!data.timestamp) return data;
+
+    const now = new Date();
+    const mealTime = data.timestamp.toDate();
+    const diffMs = now - mealTime;
+    const diffMinutes = diffMs / (1000 * 60);
+
+    return { data, diffMinutes };
   }
 
-  const result = await hasAlreadyEaten(key, type);
+  // Yemek aldı olarak işaretle
+  async function markAsEaten(key, student, type) {
+    const ref = db.collection("attendances").doc(getTodayId(key, type));
+    await ref.set({
+      key,
+      name: student.name,
+      gender: student.gender,
+      type,
+      timestamp: firebase.firestore.Timestamp.now(),
+      date: new Date().toISOString().split("T")[0]
+    });
+  }
 
-  // İlk kez geliyorsa
-  if (!result) {
+  // Ses
+  function playSound(type) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    if (type === 'success') {
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+    } else {
+      oscillator.frequency.value = 400;
+      oscillator.type = 'sawtooth';
+    }
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2);
+  }
+
+  // Öğretmen QR işleme
+  function processTeacherCode(scannedKey) {
+    const key = scannedKey.trim();
+    const teacher = teachers.find(t => t.key === key);
+    if (teacher) {
+      showMessage(`Sayın ${teacher.name}, Erişim Kabul Edildi`, "success");
+      playSound('success');
+      isTeacherVerified = true;
+      // Öğretmen kamera durdur ve öğrenci arayüzü göster
+      qrScanner.stop().then(() => {
+        document.getElementById("reader").style.display = "none";
+        document.getElementById("preAuth").style.display = "none";
+        document.getElementById("searchContainer").style.display = "flex";
+        document.getElementById("searchResult").style.display = "block";
+        document.getElementById("buttonsContainer").style.display = "flex";
+        document.getElementById("attendanceType").value = selectedAttendanceType;
+        document.getElementById("attendanceType").disabled = true;
+        showMessage(`Sayın ${teacher.name}, Erişim Kabul Edildi`, "success");
+      });
+    } else {
+      showMessage("🚫 Erişim Reddedildi", "error");
+      playSound('error');
+    }
+  }
+
+  // 🔥 QR kod işleme fonksiyonu (KAYIPTI — EKLEDİM)
+  async function processCode(scannedKey) {
+    const key = scannedKey.trim();
+    const student = students.find(s => s.key === key);
+    let type = document.getElementById('attendanceType').value;
+    if (type === 'Diğer') {
+      const other = document.getElementById('otherType').value.trim();
+      if (other) type = other;
+    }
+
+    if (!student) {
+      showMessage("🚫 Öğrenci bulunamadı. Kod öğrenciler listesinde yok.", "error");
+      playSound('error');
+      return;
+    }
+
+    const result = await hasAlreadyEaten(key, type);
+
+    // İlk kez geliyorsa
+    if (!result) {
+      await markAsEaten(key, student, type);
+      showMessage(`✅ ${student.name} ${type} yoklamasına katıldı.`, "success");
+      playSound('success');
+      return;
+    }
+
+    // Daha önce gelmiş
+    const { data, diffMinutes } = result;
+
+    if (diffMinutes <= 180) {
+      const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
+      showMessage(`⚠️ ${student.name} zaten katıldı (${recordedTime}).`, "error");
+      playSound('error');
+      return;
+    }
+
+    // 3 saatten fazla geçmişse tekrar alabilir
     await markAsEaten(key, student, type);
-    showMessage(`✅ ${student.name} ${type} yoklamasına katıldı.`, "success");
+    showMessage(`✅ ${student.name} için QR Kod tarandı`, "success");
     playSound('success');
-    return;
   }
 
-  // Daha önce gelmiş
-  const { data, diffMinutes } = result;
-
-  if (diffMinutes <= 180) {
-    const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
-    showMessage(`⚠️ ${student.name} zaten katıldı (${recordedTime}).`, "error");
-    playSound('error');
-    return;
+  // Ekrana mesaj yazdırma
+  function showMessage(message, type = "success") {
+    const resultEl = document.getElementById("result");
+    resultEl.textContent = message;
+    resultEl.className = `log ${type}`;
   }
 
-  // 3 saatten fazla geçmişse tekrar alabilir
-  await markAsEaten(key, student, type);
-  showMessage(`✅ ${student.name} için QR Kod tarandı`, "success");
-  playSound('success');
-}
+  // QR tarayıcı
+  const qrScanner = new Html5Qrcode("reader");
+  const config = { fps: 10, qrbox: 250 };
+  let lastScanned = "";
 
-// Ekrana mesaj yazdırma
-function showMessage(message, type = "success") {
-  const resultEl = document.getElementById("result");
-  resultEl.textContent = message;
-  resultEl.className = `log ${type}`;
-}
-
-// QR tarayıcı
-const qrScanner = new Html5Qrcode("reader");
-const config = { fps: 10, qrbox: 250 };
-let lastScanned = "";
-
-// Kamera başlatma
+  // Kamera başlatma
 function startCamera() {
+
+  // 🔐 Öğretmen doğrulaması şart
+  if (!isTeacherVerified) {
+    showMessage("🚫 Önce öğretmen doğrulaması gerekir", "error");
+    return;
+  }
+
   if (students.length === 0) {
     showMessage("⏳ Öğrenci listesi yükleniyor...", "error");
     return;
   }
 
+  document.getElementById("reader").style.display = "block";
+
+    qrScanner.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => {
+        const code = decodedText.trim();
+
+        if (code !== lastScanned) {
+          lastScanned = code;
+          processCode(code);
+          setTimeout(() => (lastScanned = ""), 3000);
+        }
+      },
+      () => { }
+    ).catch(err => {
+      showMessage("🚫 Kamera başlatılamadı: " + err, "error");
+    });
+  }
+
+  // Rapor oluşturma
+  async function generateReport() {
+    const today = new Date().toISOString().split("T")[0];
+
+    const q = db.collection("attendances").where("date", "==", today);
+
+    const snaps = await q.get();
+
+    if (snaps.empty) {
+      showMessage("📋 Bugün için katılım yok.", "error");
+      return;
+    }
+
+    const typeGroups = {};
+
+    snaps.forEach(d => {
+      const r = d.data();
+      const type = r.type || "Yemekhane";
+      if (!typeGroups[type]) {
+        typeGroups[type] = { all: [], males: [], females: [], uniqueAll: new Set(), uniqueMales: new Set(), uniqueFemales: new Set() };
+      }
+      const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
+      const row = [r.name, r.key, r.gender, time, "Evet"];
+      typeGroups[type].all.push(row);
+      if (r.gender === "E") {
+        typeGroups[type].males.push(row);
+        typeGroups[type].uniqueMales.add(r.key);
+      } else if (r.gender === "K") {
+        typeGroups[type].females.push(row);
+        typeGroups[type].uniqueFemales.add(r.key);
+      }
+      typeGroups[type].uniqueAll.add(r.key);
+    });
+
+    const wb = XLSX.utils.book_new();
+
+    Object.keys(typeGroups).forEach(type => {
+      const group = typeGroups[type];
+      const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.all]);
+      XLSX.utils.book_append_sheet(wb, wsAll, `${type} - Tümü`);
+
+      const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.males]);
+      XLSX.utils.book_append_sheet(wb, wsM, `${type} - Erkek`);
+
+      const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.females]);
+      XLSX.utils.book_append_sheet(wb, wsF, `${type} - Kız`);
+    });
+
+    XLSX.writeFile(wb, `Katilim_Raporu_${today}.xlsx`);
+
+    const summary = Object.keys(typeGroups).map(type => `${type}: ${typeGroups[type].uniqueAll.size}`).join(', ');
+    showMessage(`📊 Rapor oluşturuldu. ${summary}`, "success");
+  }
+
+  // Öğrencileri JSON'dan yükle
+  fetch('students.json')
+    .then(response => response.json())
+    .then(data => {
+      students = data;
+      console.log("Students loaded:", students.length);
+      // Datalist doldur
+      const datalist = document.getElementById('names');
+      const uniqueNames = new Set();
+      students.forEach(s => uniqueNames.add(s.name));
+      uniqueNames.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        datalist.appendChild(option);
+      });
+    })
+    .catch(err => {
+      console.error('JSON yüklenirken hata oluştu:', err);
+      showMessage("🚫 Öğrenci verisi yüklenemedi: " + err, "error");
+    });
+
+  // Öğretmenleri JSON'dan yükle ve kamera aç
+  fetch('teachers.json')
+    .then(response => response.json())
+    .then(data => {
+      teachers = data;
+      console.log("Teachers loaded:", teachers.length);
+      // Otomatik kamera aç
+      startCamera();
+    })
+    .catch(err => {
+      console.error('Teachers JSON yüklenirken hata oluştu:', err);
+      showMessage("🚫 Öğretmen verisi yüklenemedi: " + err, "error");
+    });
+
+  // Yoklama türü seçimi
+  document.getElementById('attendanceType').addEventListener('change', function() {
+    const otherInput = document.getElementById('otherType');
+    if (this.value === 'Diğer') {
+      otherInput.style.display = 'block';
+    } else {
+      otherInput.style.display = 'none';
+      otherInput.value = '';
+    }
+  });
+
+  // Arama input'u büyük harf yap ve ara
+  document.getElementById('searchInput').addEventListener('input', async function() {
+    this.value = this.value.toLocaleUpperCase('tr');
+    const searchTerm = this.value.trim();
+    const resultDiv = document.getElementById('searchResult');
+    if (searchTerm === '') {
+      resultDiv.textContent = '';
+      return;
+    }
+    const today = new Date().toISOString().split("T")[0];
+    try {
+      const q = db.collection("attendances").where("name", "==", searchTerm).where("date", "==", today);
+      const snaps = await q.get();
+      if (snaps.empty) {
+        resultDiv.textContent = "Öğrenciye ait kayıt bulunamadı";
+        resultDiv.className = "search-result error";
+      } else {
+        const records = [];
+        snaps.forEach(doc => {
+          const data = doc.data();
+          const time = data.timestamp.toDate().toLocaleTimeString();
+          records.push(`${searchTerm} ${time} tarihinde ${data.type} yoklamasında`);
+        });
+        resultDiv.innerHTML = records.join('<br>');
+        resultDiv.className = "search-result success";
+      }
+    } catch (err) {
+      resultDiv.textContent = "Arama hatası: " + err.message;
+      resultDiv.className = "search-result error";
+    }
+  });
+
+  let selectedAttendanceType = "";
+
+const initSelect = document.getElementById("attendanceTypeInit");
+const continueBtn = document.getElementById("continueBtn");
+
+initSelect.addEventListener("change", () => {
+  selectedAttendanceType = initSelect.value;
+  continueBtn.disabled = !selectedAttendanceType;
+});
+
+continueBtn.addEventListener("click", () => {
+  showMessage("📷 Lütfen öğretmen QR kodunu okutun", "success");
+  startTeacherCamera();
+});
+
+let lastTeacherScanned = "";
+
+function startTeacherCamera() {
   document.getElementById("reader").style.display = "block";
 
   qrScanner.start(
@@ -193,143 +412,24 @@ function startCamera() {
     (decodedText) => {
       const code = decodedText.trim();
 
-      if (code !== lastScanned) {
-        lastScanned = code;
-        processCode(code);
-        setTimeout(() => (lastScanned = ""), 3000);
-      }
-    },
-    () => { }
-  ).catch(err => {
-    showMessage("🚫 Kamera başlatılamadı: " + err, "error");
-  });
+      if (code === lastTeacherScanned) return;
+
+      lastTeacherScanned = code;
+      processTeacherCode(code);
+
+      setTimeout(() => {
+        lastTeacherScanned = "";
+      }, 3000);
+    }
+  );
 }
 
-// Rapor oluşturma
-async function generateReport() {
-  const today = new Date().toISOString().split("T")[0];
 
-  const q = db.collection("attendances").where("date", "==", today);
-
-  const snaps = await q.get();
-
-  if (snaps.empty) {
-    showMessage("📋 Bugün için katılım yok.", "error");
-    return;
-  }
-
-  const typeGroups = {};
-
-  snaps.forEach(d => {
-    const r = d.data();
-    const type = r.type || "Yemekhane";
-    if (!typeGroups[type]) {
-      typeGroups[type] = { all: [], males: [], females: [], uniqueAll: new Set(), uniqueMales: new Set(), uniqueFemales: new Set() };
-    }
-    const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
-    const row = [r.name, r.key, r.gender, time, "Evet"];
-    typeGroups[type].all.push(row);
-    if (r.gender === "E") {
-      typeGroups[type].males.push(row);
-      typeGroups[type].uniqueMales.add(r.key);
-    } else if (r.gender === "K") {
-      typeGroups[type].females.push(row);
-      typeGroups[type].uniqueFemales.add(r.key);
-    }
-    typeGroups[type].uniqueAll.add(r.key);
-  });
-
-  const wb = XLSX.utils.book_new();
-
-  Object.keys(typeGroups).forEach(type => {
-    const group = typeGroups[type];
-    const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.all]);
-    XLSX.utils.book_append_sheet(wb, wsAll, `${type} - Tümü`);
-
-    const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.males]);
-    XLSX.utils.book_append_sheet(wb, wsM, `${type} - Erkek`);
-
-    const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.females]);
-    XLSX.utils.book_append_sheet(wb, wsF, `${type} - Kız`);
-  });
-
-  XLSX.writeFile(wb, `Katilim_Raporu_${today}.xlsx`);
-
-  const summary = Object.keys(typeGroups).map(type => `${type}: ${typeGroups[type].uniqueAll.size}`).join(', ');
-  showMessage(`📊 Rapor oluşturuldu. ${summary}`, "success");
-}
-
-// Öğrencileri JSON'dan yükle
-fetch('students.json')
-  .then(response => response.json())
-  .then(data => {
-    students = data;
-    console.log("Students loaded:", students.length);
-    // Datalist doldur
-    const datalist = document.getElementById('names');
-    const uniqueNames = new Set();
-    students.forEach(s => uniqueNames.add(s.name));
-    uniqueNames.forEach(name => {
-      const option = document.createElement('option');
-      option.value = name;
-      datalist.appendChild(option);
-    });
-  })
-  .catch(err => {
-    console.error('JSON yüklenirken hata oluştu:', err);
-    showMessage("🚫 Öğrenci verisi yüklenemedi: " + err, "error");
-  });
-
-// Yoklama türü seçimi
-document.getElementById('attendanceType').addEventListener('change', function() {
-  const otherInput = document.getElementById('otherType');
-  if (this.value === 'Diğer') {
-    otherInput.style.display = 'block';
-  } else {
-    otherInput.style.display = 'none';
-    otherInput.value = '';
-  }
-});
-
-// Arama input'u büyük harf yap ve ara
-document.getElementById('searchInput').addEventListener('input', async function() {
-  this.value = this.value.toLocaleUpperCase('tr');
-  const searchTerm = this.value.trim();
-  const resultDiv = document.getElementById('searchResult');
-  if (searchTerm === '') {
-    resultDiv.textContent = '';
-    return;
-  }
-  const today = new Date().toISOString().split("T")[0];
-  try {
-    const q = db.collection("attendances").where("name", "==", searchTerm).where("date", "==", today);
-    const snaps = await q.get();
-    if (snaps.empty) {
-      resultDiv.textContent = "Öğrenciye ait kayıt bulunamadı";
-      resultDiv.className = "search-result error";
-    } else {
-      const records = [];
-      snaps.forEach(doc => {
-        const data = doc.data();
-        const time = data.timestamp.toDate().toLocaleTimeString();
-        records.push(`${searchTerm} ${time} tarihinde ${data.type} yoklamasında`);
-      });
-      resultDiv.innerHTML = records.join('<br>');
-      resultDiv.className = "search-result success";
-    }
-  } catch (err) {
-    resultDiv.textContent = "Arama hatası: " + err.message;
-    resultDiv.className = "search-result error";
-  }
-});
-
-// Fonksiyon erişimleri
-window.startCamera = startCamera;
-window.generateReport = generateReport;
-
-
-</script>
-</body>
-</html>
+  // Fonksiyon erişimleri
+  window.startCamera = startCamera;
+window.startStudentCamera = startStudentCamera;
+  </script>
+  </body>
+  </html>
 
 
