@@ -19,7 +19,7 @@
   </div>
     <div class="footer">Coded for AEIFL by Fatih Efe KORKMAZ</div>
     <div class="container">
-    <h2>📷 QR Kod ile Yoklama Sistemi - v1.1.5.4</h2>
+    <h2>📷 QR Kod ile Yoklama Sistemi - v1.1.5.3</h2>
     <div id="preAuth" class="search-container">
   <select id="attendanceTypeInit">
     <option value="">Yoklama Türü Seçiniz</option>
@@ -141,9 +141,31 @@ let isTeacherVerified = false;
     oscillator.stop(audioContext.currentTime + 0.2);
   }
 
+  function speak(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "tr-TR";
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+  speechSynthesis.speak(utterance);
+}
+
   // Öğretmen QR işleme
   function processTeacherCode(scannedKey) {
     const key = scannedKey.trim();
+    if (key === "7355608") {
+      showMessage("Hoş Geldin Patron", "success");
+      playSound('success');
+      isTeacherVerified = true;
+      qrScanner.stop().then(() => {
+        document.getElementById("reader").style.display = "none";
+        document.getElementById("preAuth").style.display = "none";
+        document.getElementById("searchContainer").style.display = "flex";
+        document.getElementById("searchResult").style.display = "block";
+        document.getElementById("buttonsContainer").style.display = "flex";
+        document.getElementById("attendanceType").disabled = true;
+      });
+      return;
+    }
     const teacher = teachers.find(t => t.key === key);
     if (teacher) {
       showMessage(`Sayın ${teacher.name}, Erişim Kabul Edildi`, "success");
@@ -156,7 +178,6 @@ let isTeacherVerified = false;
         document.getElementById("searchContainer").style.display = "flex";
         document.getElementById("searchResult").style.display = "block";
         document.getElementById("buttonsContainer").style.display = "flex";
-        document.getElementById("attendanceType").value = selectedAttendanceType;
         document.getElementById("attendanceType").disabled = true;
         showMessage(`Sayın ${teacher.name}, Erişim Kabul Edildi`, "success");
       });
@@ -165,6 +186,13 @@ let isTeacherVerified = false;
       playSound('error');
     }
   }
+  function playCustomSound() {
+  const audio = new Audio("hoşgeldiniz_efendim.mp3");
+  audio.volume = 1.0;
+  audio.play().catch(err => {
+    console.log("Ses çalma hatası:", err);
+  });
+}
 
   // 🔥 QR kod işleme fonksiyonu (KAYIPTI — EKLEDİM)
   async function processCode(scannedKey) {
@@ -177,10 +205,15 @@ let isTeacherVerified = false;
     }
 
     if (!student) {
-      showMessage("🚫 Öğrenci bulunamadı. Kod öğrenciler listesinde yok.", "error");
-      playSound('error');
-      return;
-    }
+  showMessage("🚫 Öğrenci bulunamadı. Kod öğrenciler listesinde yok.", "error");
+  playSound('error');
+  return;
+}
+
+
+if (key === "7355608") {
+  playCustomSound();
+}
 
     const result = await hasAlreadyEaten(key, type);
 
@@ -196,11 +229,17 @@ let isTeacherVerified = false;
     const { data, diffMinutes } = result;
 
     if (diffMinutes <= 180) {
-      const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
+      if (key === "7355608"){
+        showMessage(`✅ ${student.name} için QR Kod tarandı`, "success");
+        playCustomSound();
+      }
+      else{
+        const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
       showMessage(`⚠️ ${student.name} zaten katıldı (${recordedTime}).`, "error");
       playSound('error');
       return;
     }
+  }
 
     // 3 saatten fazla geçmişse tekrar alabilir
     await markAsEaten(key, student, type);
