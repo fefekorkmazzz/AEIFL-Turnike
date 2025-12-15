@@ -9,6 +9,7 @@
   {"text":"9A 610 K DURU BOZTAY","class":"9A","no":"610","gender":"K","name":"DURU BOZTAY","key":"789366"},
   {"text":"9A 611 E ABDULLAH CAN KAYA","class":"9A","no":"611","gender":"E","name":"ABDULLAH CAN KAYA","key":"990155"},
   {"text":"9A 612 K CEMİLE BEREN PİRİ","class":"9A","no":"612","gender":"K","name":"CEMİLE BEREN PİRİ","key":"654998"},
+  {"text":"9A 682 E ÖMER YİĞİT","class":"9A","no":"682","gender":"E","name":"ÖMER YİĞİT","key":"483921"},
   {"text":"9A 613 K REYYAN ARSLAN","class":"9A","no":"613","gender":"K","name":"REYYAN ARSLAN","key":"338402"},
   {"text":"9A 615 E DEVRAN SİRAÇ AYTEKİN","class":"9A","no":"615","gender":"E","name":"DEVRAN SİRAÇ AYTEKİN","key":"403115"},
   {"text":"9A 616 K YAREN BEYZA MARAL","class":"9A","no":"616","gender":"K","name":"YAREN BEYZA MARAL","key":"500882"},
@@ -60,6 +61,7 @@
 
   {"text":"9C 608 E KAYRA ÖĞÜTCÜ","class":"9C","no":"608","gender":"E","name":"KAYRA ÖĞÜTCÜ","key":"888233"},
   {"text":"9C 629 K ZÜHRA NAZ İNCE","class":"9C","no":"629","gender":"K","name":"ZÜHRA NAZ İNCE","key":"557442"},
+  {"text":"9C 681 E YAHYA TORUN","class":"9C","no":"681","gender":"E","name":"YAHYA TORUN","key":"705364"},
   {"text":"9C 630 K SENİHA SARIGÜL","class":"9C","no":"630","gender":"K","name":"SENİHA SARIGÜL","key":"209164"},
   {"text":"9C 631 K DEFNE ELA YILMAZ","class":"9C","no":"631","gender":"K","name":"DEFNE ELA YILMAZ","key":"420177"},
   {"text":"9C 632 K NEHİR ÖZCAN","class":"9C","no":"632","gender":"K","name":"NEHİR ÖZCAN","key":"908020"},
@@ -266,6 +268,7 @@
 {"text":"11A 236 E YİĞİT YAVRUCU","class":"11A","no":"236","gender":"E","name":"YİĞİT YAVRUCU","key":"615240"},
 {"text":"11A 237 E HÜSEYİN URAS ŞAHİN","class":"11A","no":"237","gender":"E","name":"HÜSEYİN URAS ŞAHİN","key":"274086"},
 {"text":"11A 238 E ORHAN EFE YILMAZ","class":"11A","no":"238","gender":"E","name":"ORHAN EFE YILMAZ","key":"490762"},
+{"text":"11A 365 K EYLÜL ADA KAZAKLI","class":"11A","no":"365","gender":"K","name":"EYLÜL ADA KAZAKLI","key":"198742"},
 {"text":"11A 239 K GÖRKEM ECRİN KAYA","class":"11A","no":"239","gender":"K","name":"GÖRKEM ECRİN KAYA","key":"850971"},
 {"text":"11A 241 E AHMET ENES ÇOLAK","class":"11A","no":"241","gender":"E","name":"AHMET ENES ÇOLAK","key":"703492"},
 {"text":"11A 242 K HÜMEYRA YÜKSEL","class":"11A","no":"242","gender":"K","name":"HÜMEYRA YÜKSEL","key":"935702"},
@@ -304,6 +307,7 @@
 {"text":"11B 272 K BUKET TAŞDELEN","class":"11B","no":"272","gender":"K","name":"BUKET TAŞDELEN","key":"381206"},
 {"text":"11B 274 E HASAN MERT ÇAĞICI","class":"11B","no":"274","gender":"E","name":"HASAN MERT ÇAĞICI","key":"710329"},
 {"text":"11B 275 E MUSTAFA CELAL TEZCAN","class":"11B","no":"275","gender":"E","name":"MUSTAFA CELAL TEZCAN","key":"950486"},
+{"text":"11B 273 E HÜSEYİN DORUKHAN ACAR","class":"11B","no":"273","gender":"E","name":"HÜSEYİN DORUKHAN ACAR","key":"964580"},
 {"text":"11B 276 E YUSUF EMİR ARSLAN","class":"11B","no":"276","gender":"E","name":"YUSUF EMİR ARSLAN","key":"601258"},
 {"text":"11B 277 K IRMAK GÜLER","class":"11B","no":"277","gender":"K","name":"IRMAK GÜLER","key":"1648b93"},
 {"text":"11B 278 E KUTAY AVŞAR","class":"11B","no":"278","gender":"E","name":"KUTAY AVŞAR","key":"943761"},
@@ -512,4 +516,3 @@
   {"text":"12D 143 E BERKAY BİÇER","class":"12D","no":"143","gender":"E","name":"BERKAY BİÇER","key":"394d820"},
   {"text":"12D 144 K DAMLA ARSLAN","class":"12D","no":"144","gender":"K","name":"DAMLA ARSLAN","key":"583820"}
 ]
-
