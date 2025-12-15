@@ -71,7 +71,8 @@
   };
   const app = firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-
+let qrLocked = false;
+let currentTeacherName = "";
   let students = [];
 let teachers = [];
 let isTeacherVerified = false;
@@ -110,13 +111,14 @@ let isTeacherVerified = false;
   async function markAsEaten(key, student, type) {
     const ref = db.collection("attendances").doc(getTodayId(key, type));
     await ref.set({
-      key,
-      name: student.name,
-      gender: student.gender,
-      type,
-      timestamp: firebase.firestore.Timestamp.now(),
-      date: new Date().toISOString().split("T")[0]
-    });
+  key,
+  name: student.name,
+  gender: student.gender,
+  type,
+  teacher: currentTeacherName || "Bilinmiyor",
+  timestamp: firebase.firestore.Timestamp.now(),
+  date: new Date().toISOString().split("T")[0]
+});
   }
 
   // Ses
@@ -130,16 +132,21 @@ let isTeacherVerified = false;
     if (type === 'success') {
       oscillator.frequency.value = 800;
       oscillator.type = 'sine';
-    } else {
+     }
+     if (type === 'vip') {
+  oscillator.type = 'triangle';
+  oscillator.frequency.value = 300;
+} else {
       oscillator.frequency.value = 400;
       oscillator.type = 'sawtooth';
     }
+
 
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.2);
-  }
+    }
 
   function speak(text) {
   const utterance = new SpeechSynthesisUtterance(text);
@@ -153,16 +160,19 @@ let isTeacherVerified = false;
   function processTeacherCode(scannedKey) {
     const key = scannedKey.trim();
     if (key === "7355608") {
+      playSound('vip');
       showMessage("Hoş Geldin Patron", "success");
-      playSound('success');
       isTeacherVerified = true;
+      currentTeacherName = teacher ? teacher.name : "Yetkili";
       qrScanner.stop().then(() => {
         document.getElementById("reader").style.display = "none";
         document.getElementById("preAuth").style.display = "none";
         document.getElementById("searchContainer").style.display = "flex";
         document.getElementById("searchResult").style.display = "block";
         document.getElementById("buttonsContainer").style.display = "flex";
-        document.getElementById("attendanceType").disabled = true;
+        const attendanceSelect = document.getElementById("attendanceType");
+attendanceSelect.value = selectedAttendanceType;
+attendanceSelect.disabled = true;
       });
       return;
     }
@@ -178,7 +188,9 @@ let isTeacherVerified = false;
         document.getElementById("searchContainer").style.display = "flex";
         document.getElementById("searchResult").style.display = "block";
         document.getElementById("buttonsContainer").style.display = "flex";
-        document.getElementById("attendanceType").disabled = true;
+        const attendanceSelect = document.getElementById("attendanceType");
+attendanceSelect.value = selectedAttendanceType;
+attendanceSelect.disabled = true;
         showMessage(`Sayın ${teacher.name}, Erişim Kabul Edildi`, "success");
       });
     } else {
@@ -210,10 +222,14 @@ let isTeacherVerified = false;
   return;
 }
 
-
-if (key === "7355608") {
-  playCustomSound();
+  if (key === "7355608") {
+     showMessage(`${student.name}, PREMIUM PASS `, "success");
+     playCustomSound();
+     return;
 }
+
+
+
 
     const result = await hasAlreadyEaten(key, type);
 
@@ -223,29 +239,23 @@ if (key === "7355608") {
       showMessage(`✅ ${student.name} ${type} yoklamasına katıldı.`, "success");
       playSound('success');
       return;
-    }
+  }
 
     // Daha önce gelmiş
     const { data, diffMinutes } = result;
 
-    if (diffMinutes <= 180) {
-      if (key === "7355608"){
-        showMessage(`✅ ${student.name} için QR Kod tarandı`, "success");
-        playCustomSound();
-      }
-      else{
-        const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
+    if (diffMinutes <= 60) { 
+      const recordedTime = data.timestamp ? data.timestamp.toDate().toLocaleTimeString() : "N/A";
       showMessage(`⚠️ ${student.name} zaten katıldı (${recordedTime}).`, "error");
       playSound('error');
       return;
-    }
   }
 
-    // 3 saatten fazla geçmişse tekrar alabilir
+    // 1 saatten fazla geçmişse tekrar alabilir
     await markAsEaten(key, student, type);
     showMessage(`✅ ${student.name} için QR Kod tarandı`, "success");
     playSound('success');
-  }
+}
 
   // Ekrana mesaj yazdırma
   function showMessage(message, type = "success") {
@@ -279,14 +289,17 @@ function startCamera() {
       { facingMode: "environment" },
       config,
       (decodedText) => {
-        const code = decodedText.trim();
+  if (qrLocked) return;
 
-        if (code !== lastScanned) {
-          lastScanned = code;
-          processCode(code);
-          setTimeout(() => (lastScanned = ""), 3000);
-        }
-      },
+  qrLocked = true;
+  const code = decodedText.trim();
+
+  processCode(code);
+
+  setTimeout(() => {
+    qrLocked = false;
+  }, 1200); // ⏱ 3 saniye kilit
+},
       () => { }
     ).catch(err => {
       showMessage("🚫 Kamera başlatılamadı: " + err, "error");
@@ -315,7 +328,7 @@ function startCamera() {
         typeGroups[type] = { all: [], males: [], females: [], uniqueAll: new Set(), uniqueMales: new Set(), uniqueFemales: new Set() };
       }
       const time = r.timestamp ? r.timestamp.toDate().toLocaleTimeString() : "N/A";
-      const row = [r.name, r.key, r.gender, time, "Evet"];
+      const row = [r.name, r.gender, time, r.teacher || "-", "Evet"];
       typeGroups[type].all.push(row);
       if (r.gender === "E") {
         typeGroups[type].males.push(row);
@@ -331,13 +344,13 @@ function startCamera() {
 
     Object.keys(typeGroups).forEach(type => {
       const group = typeGroups[type];
-      const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.all]);
+      const wsAll = XLSX.utils.aoa_to_sheet([['Ad', 'Cinsiyet', 'Saat', 'Öğretmen','Katıldı'], ...group.all]);
       XLSX.utils.book_append_sheet(wb, wsAll, `${type} - Tümü`);
 
-      const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.males]);
+      const wsM = XLSX.utils.aoa_to_sheet([['Ad', 'Cinsiyet', 'Saat', 'Öğretmen','Katıldı'], ...group.males]);
       XLSX.utils.book_append_sheet(wb, wsM, `${type} - Erkek`);
 
-      const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Key', 'Cinsiyet', 'Saat', 'Katıldı'], ...group.females]);
+      const wsF = XLSX.utils.aoa_to_sheet([['Ad', 'Cinsiyet', 'Saat', 'Öğretmen','Katıldı'], ...group.females]);
       XLSX.utils.book_append_sheet(wb, wsF, `${type} - Kız`);
     });
 
